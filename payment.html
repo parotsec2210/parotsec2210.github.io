@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment - Merchant App</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">⚡ Merchant App</div>
+        <div class="user-info" id="userInfo">
+            <span id="userName"></span>
+            <div class="user-avatar" id="userAvatar"></div>
+            <button onclick="window.location.href='dashboard.html'" class="btn" style="background: var(--silver-dark);">← Back</button>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="glass-card" style="max-width: 800px; margin: 0 auto; padding: 32px;">
+            <h2 style="text-align: center; margin-bottom: 24px;">💳 Pembayaran Merchant</h2>
+            
+            <div class="input-group">
+                <label>Nominal Pembayaran (Rp)</label>
+                <input type="number" id="amountInput" placeholder="Masukkan nominal" step="1000">
+            </div>
+            
+            <div class="input-group">
+                <label>Catatan (Opsional)</label>
+                <input type="text" id="noteInput" placeholder="Contoh: Pembayaran Order #123">
+            </div>
+            
+            <h3 style="margin: 24px 0 16px;">Pilih Metode Pembayaran</h3>
+            <div class="payment-grid" id="paymentGrid"></div>
+            
+            <button id="payNowBtn" class="btn btn-primary" style="width: 100%; margin-top: 24px;" disabled>
+                Bayar Sekarang
+            </button>
+        </div>
+    </div>
+    
+    <!-- QR Modal -->
+    <div id="qrModal" class="modal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 16px;">Scan QR Code untuk Membayar</h3>
+            <div id="qrCodeContainer" class="qr-container"></div>
+            <p style="margin-top: 16px; color: var(--text-secondary);">Scan menggunakan aplikasi Dana/GoPay/QRIS</p>
+            <button onclick="closeQRModal()" class="btn" style="margin-top: 20px; background: var(--error); color: white;">Tutup</button>
+        </div>
+    </div>
+    
+    <script src="js/firebase-config.js"></script>
+    <script src="js/telegram.js"></script>
+    <script src="js/payment.js"></script>
+    <script>
+        let selectedPaymentMethod = null;
+        let currentUser = null;
+        
+        // Payment methods data
+        const paymentMethodsData = [
+            { name: 'Dana', code: 'dana', icon: '💰', color: '#1E90FF' },
+            { name: 'GoPay', code: 'gopay', icon: '🐹', color: '#00A693' },
+            { name: 'QRIS', code: 'qris', icon: '📱', color: '#FF6B00' },
+            { name: 'BCA', code: 'bca', icon: '🏦', color: '#0066B3' },
+            { name: 'BRI', code: 'bri', icon: '🏦', color: '#0066CC' },
+            { name: 'BNI', code: 'bni', icon: '🏦', color: '#004B87' },
+            { name: 'SeaBank', code: 'seabank', icon: '🌊', color: '#007BFF' },
+            { name: 'ShopeePay', code: 'shopeepay', icon: '🛒', color: '#EE4D2D' },
+            { name: 'Isi Pulsa', code: 'telkomsel', icon: '📞', color: '#E21C23' }
+        ];
+        
+        // Load user data
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+            currentUser = user;
+            document.getElementById('userName').textContent = user.displayName || user.email;
+            const avatar = document.getElementById('userAvatar');
+            avatar.textContent = (user.displayName || user.email)[0].toUpperCase();
+            if (user.photoURL) {
+                avatar.style.backgroundImage = `url(${user.photoURL})`;
+                avatar.style.backgroundSize = 'cover';
+                avatar.textContent = '';
+            }
+        });
+        
+        // Render payment grid
+        function renderPaymentMethods() {
+            const grid = document.getElementById('paymentGrid');
+            grid.innerHTML = paymentMethodsData.map(method => `
+                <div class="payment-card" data-code="${method.code}" onclick="selectPaymentMethod('${method.code}')">
+                    <div style="font-size: 48px;">${method.icon}</div>
+                    <h4>${method.name}</h4>
+                </div>
+            `).join('');
+        }
+        
+        // Select payment method
+        window.selectPaymentMethod = function(code) {
+            selectedPaymentMethod = code;
+            // Remove selected class from all
+            document.querySelectorAll('.payment-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            // Add selected class to clicked card
+            const selectedCard = document.querySelector(`.payment-card[data-code="${code}"]`);
+            if (selectedCard) selectedCard.classList.add('selected');
+            
+            // Enable pay button
+            const payBtn = document.getElementById('payNowBtn');
+            payBtn.disabled = false;
+            payBtn.textContent = `Bayar dengan ${paymentMethodsData.find(m => m.code === code)?.name}`;
+        };
+        
+        // Pay now
+        document.getElementById('payNowBtn').addEventListener('click', async () => {
+            const amount = parseFloat(document.getElementById('amountInput').value);
+            const note = document.getElementById('noteInput').value;
+            
+            if (!amount || amount <= 0) {
+                alert('Masukkan nominal yang valid');
+                return;
+            }
+            
+            if (!selectedPaymentMethod) {
+                alert('Pilih metode pembayaran terlebih dahulu');
+                return;
+            }
+            
+            const methodName = paymentMethodsData.find(m => m.code === selectedPaymentMethod)?.name;
+            
+            // Process payment
+            await processPayment(amount, selectedPaymentMethod, currentUser, note);
+        });
+        
+        // Close QR modal
+        window.closeQRModal = function() {
+            document.getElementById('qrModal').style.display = 'none';
+        };
+        
+        // Override processPayment to handle QRIS
+        window.processPayment = async function(amount, paymentMethod, user, note) {
+            const orderId = `ORDER-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+            
+            showToast(`Memproses pembayaran ${formatRupiah(amount)}...`, 'info');
+            
+            // Simulasi pembayaran berhasil
+            setTimeout(async () => {
+                // Save transaction
+                const transaction = {
+                    orderId: orderId,
+                    amount: amount,
+                    paymentMethod: paymentMethodsData.find(m => m.code === paymentMethod)?.name,
+                    status: 'success',
+                    timestamp: new Date().toISOString(),
+                    userEmail: user.email,
+                    note: note
+                };
+                
+                saveTransaction(transaction);
+                
+                // Send notification to Telegram
+                await sendTelegramMessage(`
+✅ <b>PEMBAYARAN BERHASIL</b> ✅
+
+💰 <b>Nominal:</b> ${formatRupiah(amount)}
+💳 <b>Metode:</b> ${transaction.paymentMethod}
+🆔 <b>Order ID:</b> ${orderId}
+👤 <b>Customer:</b> ${user.displayName || user.email}
+📝 <b>Catatan:</b> ${note || '-'}
+🕐 <b>Waktu:</b> ${new Date().toLocaleString('id-ID')}
+                `);
+                
+                showToast(`Pembayaran ${formatRupiah(amount)} berhasil!`, 'success');
+                
+                // Redirect to dashboard after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+            }, 2000);
+        };
+        
+        // Initial render
+        renderPaymentMethods();
+        
+        // Format helper
+        function formatRupiah(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+    </script>
+</body>
+</html>

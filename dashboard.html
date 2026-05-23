@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Merchant App</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">⚡ Merchant App</div>
+        <div class="user-info" id="userInfo">
+            <span id="userName"></span>
+            <div class="user-avatar" id="userAvatar"></div>
+            <button id="logoutBtn" class="btn" style="background: var(--error); color: white;">Logout</button>
+        </div>
+    </nav>
+    
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-card glass-card">
+                <h3>Total Transaksi</h3>
+                <div class="stat-value" id="totalTransactions">0</div>
+            </div>
+            <div class="stat-card glass-card">
+                <h3>Total Pendapatan</h3>
+                <div class="stat-value" id="totalRevenue">Rp 0</div>
+            </div>
+            <div class="stat-card glass-card">
+                <h3>Member Since</h3>
+                <div class="stat-value" id="memberSince">-</div>
+            </div>
+        </div>
+        
+        <div class="glass-card" style="padding: 32px; margin-bottom: 32px; text-align: center;">
+            <h2 style="margin-bottom: 16px;">Mulai Pembayaran</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 24px;">Terima pembayaran dengan berbagai metode</p>
+            <button onclick="window.location.href='payment.html'" class="btn btn-primary" style="font-size: 18px; padding: 16px 32px;">
+                💳 Buat Pembayaran Baru
+            </button>
+        </div>
+        
+        <div class="glass-card" style="padding: 32px;">
+            <h3 style="margin-bottom: 20px;">📜 Riwayat Transaksi</h3>
+            <div id="transactionsList" style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--divider-dark);">
+                            <th style="padding: 12px; text-align: left;">Order ID</th>
+                            <th style="padding: 12px; text-align: left;">Tanggal</th>
+                            <th style="padding: 12px; text-align: left;">Metode</th>
+                            <th style="padding: 12px; text-align: right;">Nominal</th>
+                            <th style="padding: 12px; text-align: center;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody">
+                        <tr>
+                            <td colspan="5" style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                                Belum ada transaksi
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <script src="js/firebase-config.js"></script>
+    <script>
+        // Load user data
+        auth.onAuthStateChanged((user) => {
+            if (!user) {
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Display user info
+            document.getElementById('userName').textContent = user.displayName || user.email;
+            const avatar = document.getElementById('userAvatar');
+            avatar.textContent = (user.displayName || user.email)[0].toUpperCase();
+            if (user.photoURL) {
+                avatar.style.backgroundImage = `url(${user.photoURL})`;
+                avatar.style.backgroundSize = 'cover';
+                avatar.textContent = '';
+            }
+            
+            // Load transactions
+            loadTransactions();
+        });
+        
+        // Logout
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await auth.signOut();
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        });
+        
+        // Load transactions from localStorage
+        function loadTransactions() {
+            const transactions = JSON.parse(localStorage.getItem('transactions') || '[]');
+            const totalTransactions = transactions.length;
+            let totalRevenue = 0;
+            
+            document.getElementById('totalTransactions').textContent = totalTransactions;
+            
+            transactions.forEach(trans => {
+                totalRevenue += trans.amount;
+            });
+            
+            document.getElementById('totalRevenue').textContent = formatRupiah(totalRevenue);
+            
+            // Get member since from first transaction or current date
+            const memberSince = transactions.length > 0 
+                ? new Date(transactions[transactions.length - 1].timestamp).toLocaleDateString('id-ID')
+                : new Date().toLocaleDateString('id-ID');
+            document.getElementById('memberSince').textContent = memberSince;
+            
+            // Display transactions in table
+            const tbody = document.getElementById('transactionsTableBody');
+            if (transactions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" style="padding: 40px; text-align: center; color: var(--text-secondary);">
+                            Belum ada transaksi
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = transactions.map(trans => `
+                <tr style="border-bottom: 1px solid var(--divider-dark);">
+                    <td style="padding: 12px;">${trans.orderId}</td>
+                    <td style="padding: 12px;">${new Date(trans.timestamp).toLocaleString('id-ID')}</td>
+                    <td style="padding: 12px;">${trans.paymentMethod}</td>
+                    <td style="padding: 12px; text-align: right;">${formatRupiah(trans.amount)}</td>
+                    <td style="padding: 12px; text-align: center;">
+                        <span style="background: var(--success); color: white; padding: 4px 12px; border-radius: 20px; font-size: 12px;">
+                            ${trans.status === 'success' ? '✓ Success' : trans.status}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+        
+        function formatRupiah(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+    </script>
+</body>
+</html>
