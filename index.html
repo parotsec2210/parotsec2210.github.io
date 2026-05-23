@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, viewport-fit=cover">
+    <title>Axczyl Merchant - Premium Digital Payment</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0C0D12;
+            color: #FFFFFF;
+            min-height: 100vh;
+        }
+        .premium-bg {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: radial-gradient(ellipse at 20% 30%, rgba(180,190,210,0.06) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 70%, rgba(160,170,200,0.04) 0%, transparent 50%),
+                        linear-gradient(145deg, #0A0B10 0%, #111218 100%);
+            z-index: -2;
+        }
+        .glass-card {
+            background: rgba(16, 18, 25, 0.85);
+            backdrop-filter: blur(20px);
+            border-radius: 32px;
+            border: 1px solid rgba(200,210,240,0.12);
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.5);
+        }
+        .navbar {
+            padding: 1rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(8,9,14,0.95);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid rgba(200,210,240,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .logo { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 800; background: linear-gradient(135deg,#E8EDF5,#B8C5D8); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .admin-badge { background: linear-gradient(135deg,#2D2F3E,#1E1F2A); padding: 6px 14px; border-radius: 40px; font-size: 0.7rem; border: 1px solid rgba(200,210,240,0.25); display: flex; align-items: center; gap: 6px; }
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; right: 0;
+            background: rgba(8,10,16,0.96); backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(200,210,240,0.1);
+            border-radius: 28px 28px 0 0;
+            display: flex; justify-content: space-around;
+            padding: 0.7rem 1rem 1.2rem;
+            z-index: 99;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; gap: 5px;
+            background: transparent; border: none; color: #6B7280;
+            font-size: 0.7rem; font-weight: 500; cursor: pointer;
+        }
+        .nav-item i { font-size: 1.4rem; }
+        .nav-item.active { color: #CBD5E6; }
+        .main-container { padding: 1rem 1.2rem 5rem; max-width: 600px; margin: 0 auto; }
+        .balance-card {
+            background: linear-gradient(145deg, #131624, #0E1018);
+            border-radius: 28px; padding: 1.5rem; margin-bottom: 1.5rem;
+            border: 1px solid rgba(200,210,240,0.12);
+        }
+        .balance-amount { font-size: 2.3rem; font-weight: 800; background: linear-gradient(135deg,#F0F4FA,#B8C5D6); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 0.8rem; margin: 1rem 0; }
+        .service-card {
+            background: rgba(25,28,38,0.7); border: 1px solid rgba(200,210,240,0.1);
+            border-radius: 20px; padding: 1rem; text-align: center; cursor: pointer;
+            transition: 0.2s;
+        }
+        .service-card:hover { background: rgba(40,45,60,0.85); transform: translateY(-2px); }
+        .service-card i { font-size: 1.8rem; margin-bottom: 6px; color: #B8C5D8; }
+        .btn-primary {
+            background: linear-gradient(95deg,#2D3342,#1B1E2A);
+            border: 1px solid rgba(210,220,250,0.25);
+            border-radius: 40px; padding: 14px;
+            font-weight: 600; width: 100%; color: white;
+            cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .modal {
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.95);
+            backdrop-filter: blur(12px); z-index: 200;
+            align-items: center; justify-content: center;
+            overflow-y: auto; padding: 20px;
+        }
+        .modal-card {
+            background: #131624; border-radius: 32px; padding: 1.5rem;
+            width: 100%; max-width: 450px; border: 1px solid rgba(255,255,255,0.08);
+            max-height: 90vh; overflow-y: auto;
+        }
+        .input-field {
+            background: #1A1D28; border: 1px solid #2D3242;
+            border-radius: 40px; padding: 12px 18px;
+            width: 100%; color: white; margin: 8px 0;
+        }
+        .file-input {
+            background: #1A1D28; border: 1px solid #2D3242;
+            border-radius: 40px; padding: 10px 18px;
+            width: 100%; color: white; margin: 8px 0;
+        }
+        .file-input::-webkit-file-upload-button {
+            background: #2D3342; border: none; border-radius: 30px;
+            padding: 8px 16px; color: white; cursor: pointer;
+        }
+        .text-muted { color: #8E9AAB; font-size: 0.7rem; }
+        .flex-between { display: flex; justify-content: space-between; align-items: center; }
+        hr { border-color: rgba(255,255,255,0.06); margin: 1rem 0; }
+        .toast {
+            position: fixed; bottom: 90px; left: 20px; right: 20px;
+            background: #1E212CD9; backdrop-filter: blur(12px);
+            padding: 12px 20px; border-radius: 40px;
+            border-left: 4px solid #4CAF50; z-index: 300;
+            text-align: center; display: flex; align-items: center; justify-content: center; gap: 10px;
+        }
+        .qris-image { width: 100%; max-width: 250px; margin: 10px auto; display: block; border-radius: 20px; }
+        .info-box { background: rgba(255,193,7,0.15); border-left: 3px solid #FFC107; padding: 12px; border-radius: 16px; margin: 12px 0; }
+        .btn-small { background: #2D3342; border: none; padding: 5px 12px; border-radius: 20px; color: white; cursor: pointer; font-size: 0.7rem; }
+        .preview-img { max-width: 100%; max-height: 150px; margin-top: 10px; border-radius: 12px; display: none; }
+    </style>
+</head>
+<body>
+<div class="premium-bg"></div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyA7H6vUlSq7S6rPykU583Aqyput4eFufp0",
+        authDomain: "merchantapp-1b697.firebaseapp.com",
+        projectId: "merchantapp-1b697",
+        storageBucket: "merchantapp-1b697.firebasestorage.app",
+        messagingSenderId: "561515026860",
+        appId: "1:561515026860:web:808652191fbed8a1d90209"
+    };
+    const ADMIN_EMAIL = "axczylstore@gmail.com";
+    const DANA_NUMBER = "089517604572";
+    const GOPAY_NUMBER = "089517604572";
+    const QRIS_URL = "https://i.ibb.co.com/N2hgJwVT/Screenshot-2026-05-06-14-55-40-63-1ab0a00014f71eecf9b70b7899363193.jpg";
+    const ADMIN_FEE = 500;
+    const PULSA_PRICES = { 5000: 7000, 10000: 12000, 20000: 23000, 50000: 56000, 100000: 110000 };
+    const TELEGRAM_TOKEN = "8731519736:AAG0lxbXHTiHgJFMmo8vaGiceAYOoBuN_bs";
+    const TELEGRAM_CHAT_ID = "7991305197";
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const provider = new firebase.auth.GoogleAuthProvider();
+</script>
+
+<!-- LOGIN -->
+<div id="loginScreen" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px;">
+    <div class="glass-card" style="padding:2rem; text-align:center; max-width:380px;">
+        <i class="fas fa-bolt" style="font-size:3.5rem; background:linear-gradient(135deg,#E8EDF5,#B8C5D8); -webkit-background-clip:text; background-clip:text; color:transparent;"></i>
+        <h1 style="font-size:1.8rem; margin:12px 0;">Axczyl Merchant</h1>
+        <p class="text-muted">Premium Digital Payment Gateway</p>
+        <button id="googleLoginBtn" class="btn-primary" style="margin-top:28px;"><i class="fab fa-google"></i> Login with Google</button>
+    </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="appContainer" style="display:none;">
+    <div class="navbar">
+        <div class="logo"><i class="fas fa-bolt"></i> AXCZYL</div>
+        <div id="adminBadge"></div>
+    </div>
+    <div class="main-container" id="mainView"></div>
+    <div class="bottom-nav">
+        <button class="nav-item" data-nav="home"><i class="fas fa-home"></i><span>Beranda</span></button>
+        <button class="nav-item" data-nav="profile"><i class="fas fa-user-circle"></i><span>Profil</span></button>
+        <button class="nav-item" data-nav="history"><i class="fas fa-history"></i><span>Riwayat</span></button>
+    </div>
+</div>
+
+<!-- MODAL DEPOSIT STEP 1 -->
+<div id="depositModal1" class="modal">
+    <div class="modal-card">
+        <h3><i class="fas fa-wallet"></i> FORMULIR DEPOSIT</h3>
+        <label>Jumlah Deposit:</label>
+        <input type="number" id="depositAmount" class="input-field" placeholder="Minimal Rp500" min="500">
+        <p class="text-muted"><i class="fas fa-receipt"></i> Biaya admin: Rp500 | Total Transfer: <span id="totalTransferDisplay">Rp0</span></p>
+        <label>Metode Pembayaran:</label>
+        <div class="grid-2" style="margin:8px 0;">
+            <div class="service-card" onclick="selectMethod('DANA')"><i class="fas fa-wallet"></i><span>DANA</span></div>
+            <div class="service-card" onclick="selectMethod('GOPAY')"><i class="fab fa-google-pay"></i><span>GOPAY</span></div>
+            <div class="service-card" onclick="selectMethod('QRIS')"><i class="fas fa-qrcode"></i><span>QRIS</span></div>
+        </div>
+        <div class="info-box"><i class="fas fa-exclamation-triangle"></i> <strong>PENTING:</strong> TRANSFER SESUAI NOMINAL DEPOSIT YANG ANDA MASUKAN</div>
+        <button id="confirmMethodBtn" class="btn-primary" disabled><i class="fas fa-arrow-right"></i> KONFIRMASI</button>
+        <button class="btn-primary" style="margin-top:8px; background:#1A1D28;" onclick="closeAllModals()"><i class="fas fa-times"></i> Batal</button>
+    </div>
+</div>
+
+<!-- MODAL DEPOSIT STEP 2 - Redirect ke Aplikasi -->
+<div id="depositModal2" class="modal">
+    <div class="modal-card" id="redirectContent"></div>
+</div>
+
+<!-- MODAL DEPOSIT STEP 3 - Upload Bukti (FILE) -->
+<div id="depositModal3" class="modal">
+    <div class="modal-card">
+        <h3><i class="fas fa-upload"></i> STEP AKHIR - UPLOAD BUKTI</h3>
+        <div class="info-box"><i class="fas fa-exclamation-triangle"></i> <strong>PENTING:</strong> SILAKAN TRANSFER SESUAI JUMLAH YANG ANDA MASUKAN</div>
+        <p><strong><i class="fas fa-arrow-right"></i> TUJUAN TRANSFER:</strong> <span id="targetTransfer">-</span></p>
+        <p><strong><i class="fas fa-money-bill"></i> JUMLAH TRANSFER:</strong> <span id="jumlahTransfer">-</span></p>
+        <label>Upload Bukti Transfer (Foto Screenshot):</label>
+        <input type="file" id="proofFile" class="file-input" accept="image/*,video/*" capture="environment">
+        <div id="previewContainer"></div>
+        <button id="submitDepositFinalBtn" class="btn-primary" style="margin-top:12px;"><i class="fas fa-check-circle"></i> KONFIRMASI DEPOSIT</button>
+        <button class="btn-primary" style="margin-top:8px; background:#1A1D28;" onclick="closeAllModals()"><i class="fas fa-times"></i> Batal</button>
+    </div>
+</div>
+
+<!-- MODAL TOPUP E-WALLET -->
+<div id="topupEwalletModal" class="modal">
+    <div class="modal-card">
+        <h3><i class="fas fa-wallet"></i> FORMULIR TOPUP E-WALLET</h3>
+        <label>Jenis Topup:</label>
+        <select id="ewalletType" class="input-field">
+            <option value="Dana">DANA</option><option value="GoPay">GOPAY</option>
+            <option value="ShopeePay">SHOPEEPAY</option><option value="OVO">OVO</option>
+        </select>
+        <label>Masukan Jumlah (Rp):</label>
+        <input type="number" id="ewalletAmount" class="input-field" placeholder="Minimal Rp5.000" min="5000">
+        <label>Nomor Tujuan Transfer:</label>
+        <input type="text" id="ewalletTarget" class="input-field" placeholder="Masukan nomor e-wallet">
+        <label>Atas Nama:</label>
+        <input type="text" id="ewalletName" class="input-field" placeholder="Nama pemilik">
+        <p class="text-muted"><i class="fas fa-receipt"></i> Biaya admin: Rp500 | Total: <span id="ewalletTotal">Rp0</span></p>
+        <button id="submitEwalletBtn" class="btn-primary"><i class="fas fa-check-circle"></i> KONFIRMASI</button>
+        <button class="btn-primary" style="margin-top:8px; background:#1A1D28;" onclick="closeAllModals()">Batal</button>
+    </div>
+</div>
+
+<!-- MODAL TOPUP BANK -->
+<div id="topupBankModal" class="modal">
+    <div class="modal-card">
+        <h3><i class="fas fa-university"></i> FORMULIR TOPUP BANK</h3>
+        <label>Jenis Bank:</label>
+        <select id="bankType" class="input-field">
+            <option value="BCA">BCA</option><option value="Mandiri">MANDIRI</option>
+            <option value="BRI">BRI</option><option value="BNI">BNI</option>
+        </select>
+        <label>Masukan Jumlah (Rp):</label>
+        <input type="number" id="bankAmount" class="input-field" placeholder="Minimal Rp10.000" min="10000">
+        <label>Nomor Rekening Tujuan:</label>
+        <input type="text" id="bankTarget" class="input-field" placeholder="Masukan nomor rekening">
+        <label>Atas Nama:</label>
+        <input type="text" id="bankName" class="input-field" placeholder="Nama pemilik rekening">
+        <p class="text-muted"><i class="fas fa-receipt"></i> Biaya admin: Rp500 | Total: <span id="bankTotal">Rp0</span></p>
+        <button id="submitBankBtn" class="btn-primary"><i class="fas fa-check-circle"></i> KONFIRMASI</button>
+        <button class="btn-primary" style="margin-top:8px; background:#1A1D28;" onclick="closeAllModals()">Batal</button>
+    </div>
+</div>
+
+<!-- MODAL ISI PULSA -->
+<div id="topupPulsaModal" class="modal">
+    <div class="modal-card">
+        <h3><i class="fas fa-mobile-alt"></i> FORMULIR ISI PULSA & KUOTA</h3>
+        <label>Jenis Pesanan:</label>
+        <select id="pulsaType" class="input-field">
+            <option value="Pulsa">PULSA</option><option value="Kuota">KUOTA DATA</option>
+        </select>
+        <label>Pesanan Anda:</label>
+        <select id="pulsaNominal" class="input-field">
+            <option value="5000">PULSA Rp5.000</option><option value="10000">PULSA Rp10.000</option>
+            <option value="20000">PULSA Rp20.000</option><option value="50000">PULSA Rp50.000</option>
+            <option value="100000">PULSA Rp100.000</option>
+        </select>
+        <label>Masukan Nomor HP:</label>
+        <input type="tel" id="pulsaPhone" class="input-field" placeholder="08xxxxxxxxxx">
+        <p class="text-muted">Harga: <span id="pulsaPrice">-</span></p>
+        <p class="text-muted"><i class="fas fa-receipt"></i> Biaya admin: Rp500 | Total: <span id="pulsaTotal">Rp0</span></p>
+        <button id="submitPulsaBtn" class="btn-primary"><i class="fas fa-check-circle"></i> KONFIRMASI</button>
+        <button class="btn-primary" style="margin-top:8px; background:#1A1D28;" onclick="closeAllModals()">Batal</button>
+    </div>
+</div>
+
+<!-- MODAL ADMIN -->
+<div id="adminModal" class="modal">
+    <div class="modal-card" style="max-width:95%; max-height:80vh; overflow:auto;">
+        <h3><i class="fas fa-shield-alt"></i> Admin Panel</h3>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin:12px 0;">
+            <button class="btn-small" onclick="adminShowPending()"><i class="fas fa-clock"></i> Pending Deposit</button>
+            <button class="btn-small" onclick="adminShowUsers()"><i class="fas fa-users"></i> Semua User</button>
+            <button class="btn-small" onclick="adminShowAllTx()"><i class="fas fa-list-alt"></i> Semua Transaksi</button>
+        </div>
+        <div id="adminContent">Pilih menu di atas</div>
+        <button class="btn-primary" style="margin-top:12px;" onclick="closeModal('adminModal')">Tutup</button>
+    </div>
+</div>
+
+<script>
+    let currentUser = null, currentTab = 'home', userBalance = 0, transactions = [], isAdmin = false;
+    let depositData = { amount: 0, total: 0, method: '' };
+    let currentProofData = null;
+
+    function formatRp(amount) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(amount); }
+    function showToast(msg, isErr = false) { let t = document.createElement('div'); t.className = 'toast'; t.innerHTML = `<i class="fas ${isErr ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${msg}`; t.style.borderLeftColor = isErr ? '#F44336' : '#4CAF50'; document.body.appendChild(t); setTimeout(() => t.remove(), 2800); }
+    async function sendTelegram(msg) { if (TELEGRAM_TOKEN && TELEGRAM_CHAT_ID) { try { await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `chat_id=${TELEGRAM_CHAT_ID}&text=${encodeURIComponent(msg)}&parse_mode=HTML` }); } catch (e) {} } }
+
+    function loadUserData(email) { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); if (!all[email]) all[email] = { balance: 0, transactions: [], pendingDeposits: [] }; userBalance = all[email].balance; transactions = all[email].transactions || []; return all[email]; }
+    function saveUserData(email, balance, txList, pending = null) { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); if (!all[email]) all[email] = { pendingDeposits: [] }; all[email].balance = balance; all[email].transactions = txList; if (pending !== null) all[email].pendingDeposits = pending; localStorage.setItem('axczyl_users', JSON.stringify(all)); }
+    function persist() { if (currentUser) saveUserData(currentUser.email, userBalance, transactions); }
+    function addTransaction(type, method, amount, fee, detail, status = 'success') { let total = amount + fee; let tx = { id: Date.now(), type, method, nominal: amount, fee, total, detail, date: new Date().toISOString(), status }; transactions.unshift(tx); if (status === 'success' && type === 'DEPOSIT') userBalance += total; else if (status === 'success' && ['TOPUP E-WALLET', 'TOPUP BANK', 'ISI PULSA'].includes(type)) { if (userBalance >= total) userBalance -= total; else return false; } persist(); renderCurrentView(); return true; }
+
+    // DEPOSIT FLOW
+    let selectedMethod = null;
+    function selectMethod(method) { selectedMethod = method; document.getElementById('confirmMethodBtn').disabled = false; }
+    document.getElementById('depositAmount')?.addEventListener('input', function() { let val = parseInt(this.value) || 0; let total = val + ADMIN_FEE; document.getElementById('totalTransferDisplay').innerHTML = formatRp(total); });
+    document.getElementById('confirmMethodBtn')?.addEventListener('click', () => { let amount = parseInt(document.getElementById('depositAmount').value); if (!amount || amount < 500) { showToast("Minimal deposit Rp500", true); return; } if (!selectedMethod) { showToast("Pilih metode pembayaran", true); return; } depositData = { amount: amount, total: amount + ADMIN_FEE, method: selectedMethod }; showRedirectStep(); });
+    
+    function showRedirectStep() { 
+        let content = ''; 
+        if (depositData.method === 'DANA') { 
+            content = `<h3><i class="fas fa-wallet"></i> Redirect ke DANA</h3><p>Anda akan dialihkan ke aplikasi DANA untuk melakukan transfer sebesar ${formatRp(depositData.total)}</p><p class="text-muted" style="margin:10px 0;">Nomor DANA: <strong>${DANA_NUMBER}</strong> a.n Novita</p><button class="btn-primary" onclick="openDanaAndNext()"><i class="fab fa-android"></i> Buka Aplikasi DANA</button><button class="btn-primary" style="margin-top:8px; background:#1A1D28;" onclick="nextToProof()"><i class="fas fa-arrow-right"></i> Saya Sudah Transfer</button>`; 
+        } else if (depositData.method === 'GOPAY') { 
+            content = `<h3><i class="fab fa-google-pay"></i> Redirect ke GOPAY</h3><p>Anda akan dialihkan ke aplikasi GOPAY untuk melakukan transfer sebesar ${formatRp(depositData.total)}</p><p class="text-muted" style="margin:10px 0;">Nomor GOPAY: <strong>${GOPAY_NUMBER}</strong> a.n Novita</p><button class="btn-primary" onclick="openGopayAndNext()"><i class="fab fa-android"></i> Buka Aplikasi GOPAY</button><button class="btn-primary" style="margin-top:8px; background:#1A1D28;" onclick="nextToProof()"><i class="fas fa-arrow-right"></i> Saya Sudah Transfer</button>`; 
+        } else { 
+            content = `<h3><i class="fas fa-qrcode"></i> Scan QRIS</h3><img src="${QRIS_URL}" class="qris-image" alt="QRIS"><p>Scan QR di atas menggunakan aplikasi pembayaran QRIS</p><button class="btn-primary" onclick="nextToProof()"><i class="fas fa-arrow-right"></i> Lanjut ke Upload Bukti</button>`; 
+        } 
+        document.getElementById('redirectContent').innerHTML = content; 
+        closeModal('depositModal1'); 
+        document.getElementById('depositModal2').style.display = 'flex'; 
+    }
+    
+    function openDanaAndNext() { 
+        window.location.href = `dana://transfer?amount=${depositData.total}&phone=${DANA_NUMBER}`;
+        setTimeout(() => { window.open(`https://link.dana.id/qr/${DANA_NUMBER}`, '_blank'); }, 500);
+        setTimeout(() => nextToProof(), 2000); 
+    }
+    function openGopayAndNext() { 
+        window.location.href = `gopay://transfer?amount=${depositData.total}&phone=${GOPAY_NUMBER}`;
+        setTimeout(() => { window.open(`https://gopay.co.id/app/merchanttransfer?tref=${GOPAY_NUMBER}`, '_blank'); }, 500);
+        setTimeout(() => nextToProof(), 2000); 
+    }
+    
+    function nextToProof() { 
+        closeModal('depositModal2'); 
+        document.getElementById('targetTransfer').innerHTML = depositData.method === 'DANA' ? `DANA: ${DANA_NUMBER} (a.n Novita)` : depositData.method === 'GOPAY' ? `GOPAY: ${GOPAY_NUMBER} (a.n Novita)` : `QRIS (Scan QR di atas)`; 
+        document.getElementById('jumlahTransfer').innerHTML = formatRp(depositData.total); 
+        document.getElementById('proofFile').value = '';
+        document.getElementById('previewContainer').innerHTML = '';
+        document.getElementById('depositModal3').style.display = 'flex'; 
+    }
+    
+    // Preview file bukti
+    document.getElementById('proofFile')?.addEventListener('change', function(e) {
+        let file = e.target.files[0];
+        if (file) {
+            let reader = new FileReader();
+            reader.onload = function(event) {
+                let preview = document.getElementById('previewContainer');
+                preview.innerHTML = `<img src="${event.target.result}" class="preview-img" style="display:block; max-width:100%; max-height:150px; border-radius:12px; margin-top:10px;">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    document.getElementById('submitDepositFinalBtn')?.addEventListener('click', () => { 
+        let fileInput = document.getElementById('proofFile');
+        let file = fileInput.files[0];
+        if (!file) { showToast("Silakan upload bukti transfer terlebih dahulu", true); return; }
+        
+        let reader = new FileReader();
+        reader.onload = function(event) {
+            let proofBase64 = event.target.result;
+            
+            let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); 
+            let userData = all[currentUser.email] || { balance: 0, transactions: [], pendingDeposits: [] }; 
+            if (!userData.pendingDeposits) userData.pendingDeposits = []; 
+            let pending = { 
+                id: Date.now(), 
+                amount: depositData.amount, 
+                fee: ADMIN_FEE, 
+                total: depositData.total, 
+                proof: proofBase64.substring(0, 200) + "...", 
+                proofFull: proofBase64,
+                method: depositData.method, 
+                date: new Date().toISOString(), 
+                status: 'pending', 
+                userEmail: currentUser.email,
+                userName: currentUser.displayName || currentUser.email
+            }; 
+            userData.pendingDeposits.push(pending); 
+            all[currentUser.email] = userData; 
+            localStorage.setItem('axczyl_users', JSON.stringify(all)); 
+            sendTelegram(`💸 DEPOSIT PENDING\n👤 ${currentUser.email}\n💰 ${formatRp(depositData.amount)}\n💳 ${depositData.method}\n🆔 ${pending.id}`); 
+            showToast(`Deposit ${formatRp(depositData.total)} diajukan, menunggu konfirmasi admin.`); 
+            closeAllModals(); 
+            renderCurrentView(); 
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // TOPUP E-WALLET
+    document.getElementById('ewalletAmount')?.addEventListener('input', function() { let val = parseInt(this.value) || 0; document.getElementById('ewalletTotal').innerHTML = formatRp(val + ADMIN_FEE); });
+    document.getElementById('submitEwalletBtn')?.addEventListener('click', () => { let amount = parseInt(document.getElementById('ewalletAmount').value); let type = document.getElementById('ewalletType').value; let target = document.getElementById('ewalletTarget').value; let name = document.getElementById('ewalletName').value; if (!amount || amount < 5000) { showToast("Minimal Rp5.000", true); return; } if (!target) { showToast("Masukan nomor tujuan", true); return; } if (!name) { showToast("Masukan atas nama", true); return; } let total = amount + ADMIN_FEE; if (userBalance < total) { showToast(`Saldo tidak cukup (${formatRp(userBalance)})`, true); return; } if (addTransaction('TOPUP E-WALLET', type, amount, ADMIN_FEE, `${type} - ${target} (a.n ${name})`, 'success')) { sendTelegram(`✅ TOPUP E-WALLET\n👤 ${currentUser.email}\n💳 ${type}\n💰 ${formatRp(amount)}\n📱 ${target}`); showToast(`Berhasil Topup ${type} ${formatRp(amount)}`); closeAllModals(); } });
+
+    // TOPUP BANK
+    document.getElementById('bankAmount')?.addEventListener('input', function() { let val = parseInt(this.value) || 0; document.getElementById('bankTotal').innerHTML = formatRp(val + ADMIN_FEE); });
+    document.getElementById('submitBankBtn')?.addEventListener('click', () => { let amount = parseInt(document.getElementById('bankAmount').value); let type = document.getElementById('bankType').value; let target = document.getElementById('bankTarget').value; let name = document.getElementById('bankName').value; if (!amount || amount < 10000) { showToast("Minimal Rp10.000", true); return; } if (!target) { showToast("Masukan nomor rekening", true); return; } if (!name) { showToast("Masukan atas nama", true); return; } let total = amount + ADMIN_FEE; if (userBalance < total) { showToast(`Saldo tidak cukup (${formatRp(userBalance)})`, true); return; } if (addTransaction('TOPUP BANK', type, amount, ADMIN_FEE, `${type} - ${target} (a.n ${name})`, 'success')) { sendTelegram(`✅ TOPUP BANK\n👤 ${currentUser.email}\n🏦 ${type}\n💰 ${formatRp(amount)}\n📱 ${target}`); showToast(`Berhasil Topup Bank ${formatRp(amount)}`); closeAllModals(); } });
+
+    // PULSA
+    document.getElementById('pulsaNominal')?.addEventListener('change', function() { let nominal = parseInt(this.value); let price = PULSA_PRICES[nominal] || nominal + 2000; document.getElementById('pulsaPrice').innerHTML = formatRp(price); document.getElementById('pulsaTotal').innerHTML = formatRp(price + ADMIN_FEE); });
+    document.getElementById('submitPulsaBtn')?.addEventListener('click', () => { let nominal = parseInt(document.getElementById('pulsaNominal').value); let price = PULSA_PRICES[nominal] || nominal + 2000; let phone = document.getElementById('pulsaPhone').value; let type = document.getElementById('pulsaType').value; if (!phone || phone.length < 10) { showToast("Masukan nomor HP yang valid", true); return; } let total = price + ADMIN_FEE; if (userBalance < total) { showToast(`Saldo tidak cukup (${formatRp(userBalance)})`, true); return; } if (addTransaction('ISI PULSA', type, price, ADMIN_FEE, `${type} ${formatRp(nominal)} ke ${phone}`, 'success')) { sendTelegram(`✅ ISI PULSA\n👤 ${currentUser.email}\n📱 ${phone}\n💰 ${formatRp(price)}`); showToast(`Berhasil isi pulsa ke ${phone}`); closeAllModals(); } });
+
+    // UI RENDER
+    function renderHome() { let pendingCount = 0; let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); if (all[currentUser.email]?.pendingDeposits) pendingCount = all[currentUser.email].pendingDeposits.filter(p => p.status === 'pending').length; document.getElementById('mainView').innerHTML = `<div class="balance-card"><div class="balance-amount">${formatRp(userBalance)}</div><button class="btn-primary" id="depositBtn" style="margin-top:16px;"><i class="fas fa-download"></i> Deposit Saldo</button>${pendingCount > 0 ? `<p class="text-muted" style="margin-top:8px;"><i class="fas fa-clock"></i> ${pendingCount} deposit menunggu konfirmasi</p>` : ''}</div><div class="glass-card" style="padding:1rem;"><div style="font-weight:600; margin-bottom:12px;"><i class="fas fa-shopping-cart"></i> Layanan Topup</div><div class="grid-2"><div class="service-card" onclick="openTopupEwallet()"><i class="fas fa-wallet"></i><span>E-WALLET</span></div><div class="service-card" onclick="openTopupBank()"><i class="fas fa-university"></i><span>BANK</span></div><div class="service-card" onclick="openTopupPulsa()"><i class="fas fa-mobile-alt"></i><span>PULSA & KUOTA</span></div></div></div><div class="glass-card" style="margin-top:16px; padding:1rem;"><div style="font-weight:600;"><i class="fas fa-history"></i> Transaksi Terbaru</div><div id="recentTx"></div></div>`; document.getElementById('depositBtn')?.addEventListener('click', () => { document.getElementById('depositAmount').value = ''; document.getElementById('totalTransferDisplay').innerHTML = 'Rp0'; selectedMethod = null; document.getElementById('confirmMethodBtn').disabled = true; document.getElementById('depositModal1').style.display = 'flex'; }); let recent = transactions.slice(0, 3); let html = recent.length ? recent.map(t => `<div class="flex-between" style="padding:10px 0; border-bottom:1px solid #2A2E3C;"><div><b>${t.type}</b><br><span class="text-muted">${new Date(t.date).toLocaleDateString()}</span></div><div>${formatRp(t.total)}</div></div>`).join('') : '<p class="text-muted"><i class="fas fa-inbox"></i> Belum ada transaksi</p>'; document.getElementById('recentTx').innerHTML = html; }
+    function renderProfile() { document.getElementById('mainView').innerHTML = `<div class="balance-card" style="text-align:center;"><i class="fas fa-user-circle" style="font-size:3rem; color:#B8C5D8;"></i><h3>${currentUser.displayName || currentUser.email.split('@')[0]}</h3><p class="text-muted">${currentUser.email}</p><hr><div class="flex-between"><span><i class="fas fa-wallet"></i> Saldo</span><span>${formatRp(userBalance)}</span></div><button id="logoutBtn" class="btn-primary" style="margin-top:20px; background:#2C1E1E;"><i class="fas fa-sign-out-alt"></i> Logout</button></div>`; document.getElementById('logoutBtn')?.addEventListener('click', async () => { await auth.signOut(); location.reload(); }); if (isAdmin) { let btn = document.createElement('button'); btn.className = 'btn-primary'; btn.innerHTML = '<i class="fas fa-shield-alt"></i> Admin Panel'; btn.style.marginTop = '12px'; btn.onclick = () => document.getElementById('adminModal').style.display = 'flex'; document.querySelector('#mainView .balance-card').appendChild(btn); } }
+    function renderHistory() { let html = `<div class="glass-card" style="padding:1rem;"><h3><i class="fas fa-list-ul"></i> Riwayat Transaksi</h3>`; if (transactions.length) { transactions.forEach(t => { html += `<div class="flex-between" style="padding:12px 0; border-bottom:1px solid #2A2E3C;"><div><b>${t.type}</b><br><span class="text-muted">${t.detail}</span><br><small>${new Date(t.date).toLocaleString()}</small></div><div>${formatRp(t.total)}</div></div>`; }); } else html += `<p class="text-muted"><i class="fas fa-inbox"></i> Kosong</p>`; html += `</div>`; document.getElementById('mainView').innerHTML = html; }
+    function renderCurrentView() { if (currentTab === 'home') renderHome(); else if (currentTab === 'profile') renderProfile(); else if (currentTab === 'history') renderHistory(); document.querySelectorAll('.nav-item').forEach(btn => { if (btn.dataset.nav === currentTab) btn.classList.add('active'); else btn.classList.remove('active'); }); }
+    function openTopupEwallet() { document.getElementById('ewalletAmount').value = ''; document.getElementById('ewalletTotal').innerHTML = 'Rp0'; document.getElementById('topupEwalletModal').style.display = 'flex'; }
+    function openTopupBank() { document.getElementById('bankAmount').value = ''; document.getElementById('bankTotal').innerHTML = 'Rp0'; document.getElementById('topupBankModal').style.display = 'flex'; }
+    function openTopupPulsa() { document.getElementById('pulsaPhone').value = ''; document.getElementById('pulsaNominal').dispatchEvent(new Event('change')); document.getElementById('topupPulsaModal').style.display = 'flex'; }
+
+    // ADMIN FUNCTIONS
+    function adminShowPending() { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); let pendings = []; for (let email in all) { if (all[email].pendingDeposits) pendings.push(...all[email].pendingDeposits.filter(p => p.status === 'pending').map(p => ({ ...p, userEmail: email }))); } if (!pendings.length) { document.getElementById('adminContent').innerHTML = '<p class="text-muted">Tidak ada pending deposit</p>'; return; } let html = '<table class="admin-table"><tr><th>User</th><th>Nominal</th><th>Metode</th><th>Bukti</th><th>Aksi</th></table>'; pendings.forEach(p => { html += `<tr><td>${p.userEmail.split('@')[0]}</td><td>${formatRp(p.total)}</td><td>${p.method}</td><td><button class="btn-small" onclick="showProof('${p.id}','${p.userEmail}')">Lihat Bukti</button></td><td><button class="btn-small" onclick="confirmDeposit('${p.id}','${p.userEmail}',${p.amount},${p.fee})">Konfirmasi</button></td>`; }); html += '</table>'; document.getElementById('adminContent').innerHTML = html; }
+    window.showProof = (id, email) => { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); let user = all[email]; if (user && user.pendingDeposits) { let pending = user.pendingDeposits.find(p => p.id == id); if (pending && pending.proofFull) { let win = window.open(); win.document.write(`<html><head><title>Bukti Transfer</title></head><body style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;"><img src="${pending.proofFull}" style="max-width:100%;max-height:100vh;"></body></html>`); } else { showToast("Bukti tidak tersedia", true); } } };
+    window.confirmDeposit = (id, email, amount, fee) => { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); let user = all[email]; if (user && user.pendingDeposits) { let idx = user.pendingDeposits.findIndex(p => p.id == id); if (idx !== -1 && user.pendingDeposits[idx].status === 'pending') { user.pendingDeposits[idx].status = 'success'; user.balance = (user.balance || 0) + amount + fee; let tx = { id: Date.now(), type: 'DEPOSIT', method: user.pendingDeposits[idx].method, nominal: amount, fee: fee, total: amount + fee, detail: `Deposit via ${user.pendingDeposits[idx].method} (Confirmed)`, date: new Date().toISOString(), status: 'success' }; if (!user.transactions) user.transactions = []; user.transactions.unshift(tx); all[email] = user; localStorage.setItem('axczyl_users', JSON.stringify(all)); sendTelegram(`✅ DEPOSIT CONFIRMED! +${formatRp(amount + fee)}\n👤 ${email}`); showToast(`Deposit ${formatRp(amount + fee)} dikonfirmasi`); adminShowPending(); if (currentUser && currentUser.email === email) { loadUserData(email); renderCurrentView(); } } } };
+    function adminShowUsers() { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); let html = '<table class="admin-table"><tr><th>Email</th><th>Saldo</th><th>Aksi</th></tr>'; for (let email in all) { html += `<tr><td>${email}</td><td>${formatRp(all[email].balance || 0)}</td><td><button class="btn-small" onclick="adminAddBalance('${email}')">Tambah</button></td>`; } html += '</table>'; document.getElementById('adminContent').innerHTML = html; }
+    window.adminAddBalance = (email) => { let amount = prompt("Nominal tambahan saldo:", "50000"); if (amount && !isNaN(amount) && parseInt(amount) > 0) { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); if (all[email]) { all[email].balance = (all[email].balance || 0) + parseInt(amount); let tx = { id: Date.now(), type: 'ADMIN BONUS', method: 'Manual', nominal: parseInt(amount), fee: 0, total: parseInt(amount), detail: `Tambah saldo oleh admin`, date: new Date().toISOString(), status: 'success' }; if (!all[email].transactions) all[email].transactions = []; all[email].transactions.unshift(tx); localStorage.setItem('axczyl_users', JSON.stringify(all)); showToast(`Saldo ${email} +${formatRp(parseInt(amount))}`); adminShowUsers(); if (currentUser && currentUser.email === email) { loadUserData(email); renderCurrentView(); } } } };
+    function adminShowAllTx() { let all = JSON.parse(localStorage.getItem('axczyl_users') || '{}'); let allTx = []; for (let email in all) if (all[email].transactions) allTx.push(...all[email].transactions.map(t => ({ ...t, userEmail: email }))); allTx.sort((a, b) => b.id - a.id); let html = '<table class="admin-table"><tr><th>User</th><th>Tipe</th><th>Total</th><th>Waktu</th></tr>'; allTx.slice(0, 30).forEach(t => { html += `<tr><td>${t.userEmail.split('@')[0]}</td><td>${t.type}</td><td>${formatRp(t.total)}</td><td>${new Date(t.date).toLocaleString()}</td>`; }); html += '<tr>'; document.getElementById('adminContent').innerHTML = html; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function closeAllModals() { document.querySelectorAll('.modal').forEach(m => m.style.display = 'none'); }
+    window.closeAllModals = closeAllModals;
+    window.openTopupEwallet = openTopupEwallet;
+    window.openTopupBank = openTopupBank;
+    window.openTopupPulsa = openTopupPulsa;
+
+    auth.onAuthStateChanged((user) => { if (user) { currentUser = user; isAdmin = (user.email === ADMIN_EMAIL); loadUserData(user.email); document.getElementById('loginScreen').style.display = 'none'; document.getElementById('appContainer').style.display = 'block'; if (isAdmin) document.getElementById('adminBadge').innerHTML = '<div class="admin-badge"><i class="fas fa-crown"></i> Admin</div>'; renderCurrentView(); document.querySelectorAll('.nav-item').forEach(btn => { btn.onclick = () => { currentTab = btn.dataset.nav; renderCurrentView(); }; }); } else { document.getElementById('loginScreen').style.display = 'flex'; document.getElementById('appContainer').style.display = 'none'; } });
+    document.getElementById('googleLoginBtn')?.addEventListener('click', async () => { await auth.signInWithPopup(provider); });
+</script>
+</body>
+</html>
